@@ -1009,11 +1009,23 @@ economicsAdj %>%
         ymin = -Inf, ymax = Inf,
         fill = status
       ),
+      na.rm = TRUE,
       alpha = 0.4
     ) +
     geom_line(
       aes(x = date, y = unemploy),
       color = wso::color.wsoCols("dark blue"), size = 0.75
+    ) +
+    scale_fill_manual(
+      name = "State of Economy",
+      values = c(
+        "Boon" = wso::color.wsoCols("green") %>% unname(),
+        "Recession" = wso::color.wsoCols("red") %>% unname()
+      )
+    ) +
+    scale_x_date(
+      labels = scales::date_format("%Y"),
+      date_breaks = "5 years"
     ) +
     scale_y_continuous(
       label = scales::comma_format(1)
