@@ -19,6 +19,14 @@ knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE)
 ```
 
 # Workspace and Other Setup {.tabset .tabset-fade}
+## @TODO
+- Error bars
+- More facets
+- More labelling functions
+- Interactive (i.e. htmlwidgets)
+- Maps
+- Conditional labelling 
+
 ## Packages & settings
 Load what I need.
 ```{r results = "hide"}
@@ -122,7 +130,7 @@ mpg %>%
     theme_cs
 ```
 
-## Reordering
+## Reordering and labeller
 ```{r}
 mpg %>%
   group_by(class) %>%
@@ -134,7 +142,8 @@ mpg %>%
       aes(
         x = forcats::fct_reorder(class, avgHwy),
         y = avgHwy
-      ), fill = wso::color.wsoCols("dark blue")
+      ), 
+      fill = wso::color.wsoCols("dark blue")
     ) +
     labs(
       title = "Fuel Economy by Class",
@@ -750,20 +759,13 @@ diamonds %>%
 ```
 
 # Facets
-With historgrams and a labeller function
+With historgrams and a label list
 ```{r}
 classList <- c(
   "compact" = "Compact",
   "midsize" = "Midsize",
   "suv" = "Sports Utility Vehicle (SUV)"
 )
-
-yearList <- c(
-  "1999" = "1999",
-  "2008" = "2008"
-)
-
-labelFunction = as_labeller(c(classList, yearList))
 
 mpg %>%
   filter(
@@ -776,8 +778,10 @@ mpg %>%
       fill = wso::color.wsoCols("dark blue")
     ) +
     facet_grid(
-      vars(year), vars(class),
-      labeller = labelFunction
+      rows = vars(year), cols = vars(class),
+      labeller = labeller(
+        .cols = classList
+      )
     ) +
     labs(
       title = "Fuel Economy",
