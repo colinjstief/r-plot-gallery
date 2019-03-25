@@ -35,7 +35,7 @@ To make our data more convenient to work with
 ```{r}
 miris <- iris %>%
   mutate_if(
-    is.numeric, ~ . * 1000
+    is.numeric, ~ . * 100
   ) %>%
   mutate(
     wsoIndex = 1:nrow(iris)
@@ -542,71 +542,6 @@ mtcars %>%
     theme_cs
 ```
 
-# Facets
-With a bar chart
-```{r}
-
-```
-
-With a scatterplot
-```{r}
-miris %>%
-  ggplot() +
-    geom_point(
-      aes(x = Sepal.Width, y = Petal.Width, color = Species),
-      size = 2
-    ) +
-    facet_grid(
-      cols = vars(Species)
-    ) +
-    scale_x_continuous(
-      labels = scales::comma_format()
-    ) +
-    scale_y_continuous(
-      labels = scales::comma_format()
-    ) +
-    labs(
-      title = "Sepal Width by Petal Length",
-      x = "Sepal.Width (small units)",
-      y = "Petal.Length (small units)"
-    ) +
-    wso::color.scale_color_wso() +
-    theme_cs +
-    theme(
-      panel.spacing = unit(2, "lines"),
-      legend.position = "bottom",
-      axis.text.x = element_text(angle = 45, hjust = 1)
-    )
-```
-
-```{r}
-miris %>%
-  ggplot() +
-    geom_point(
-      aes(x = Sepal.Width, y = Petal.Width, color = Species),
-      size = 2
-    ) +
-    facet_grid(
-      rows = vars(Species), scales = "free"
-    ) +
-    scale_x_continuous(
-      labels = scales::comma_format()
-    ) +
-    scale_y_continuous(
-      labels = scales::comma_format()
-    ) +
-    labs(
-      title = "Sepal Width by Petal Length",
-      x = "Sepal.Width (small units)",
-      y = "Petal.Length (small units)"
-    ) +
-    wso::color.scale_color_wso() +
-    theme_cs +
-    theme(
-      legend.position = "bottom"
-    )
-```
-
 # Regression
 Manual
 ```{r}
@@ -689,7 +624,7 @@ ChickWeight %>%
 diamonds %>%
   ggplot() +
     geom_histogram(
-      aes(x = price), fill = wso::color.wsoCols("dark blue")
+      aes(x = price), fill = wso::color.wsoCols("dark blue"),
       bins = 35
       # binwidth = 0.05 ## Could use this too
     ) +
@@ -811,6 +746,77 @@ diamonds %>%
     theme_cs +
     theme(
       legend.position = "bottom"
+    )
+```
+
+# Facets
+With historgrams and a labeller function
+```{r}
+classList <- c(
+  "compact" = "Compact",
+  "midsize" = "Midsize",
+  "suv" = "Sports Utility Vehicle (SUV)"
+)
+
+yearList <- c(
+  "1999" = "1999",
+  "2008" = "2008"
+)
+
+labelFunction = as_labeller(c(classList, yearList))
+
+mpg %>%
+  filter(
+    class %in% c("compact", "midsize", "suv")
+  ) %>%
+  ggplot() + 
+    geom_histogram(
+      aes(x = cty),
+      bins = 35,
+      fill = wso::color.wsoCols("dark blue")
+    ) +
+    facet_grid(
+      vars(year), vars(class),
+      labeller = labelFunction
+    ) +
+    labs(
+      title = "Fuel Economy",
+      y = "Count of vehicles",
+      x = "City MPG"
+    ) +
+    theme_cs
+```
+
+With a scatterplot and spaced facets
+```{r}
+miris %>%
+  ggplot() +
+    geom_point(
+      aes(x = Sepal.Width, y = Petal.Width, color = Species),
+      size = 2
+    ) +
+    facet_grid(
+      cols = vars(Species)
+    ) +
+    scale_x_continuous(
+      labels = scales::comma_format()
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    labs(
+      title = "Sepal Width by Petal Length",
+      x = "Sepal.Width (small units)",
+      y = "Petal.Length (small units)"
+    ) +
+    wso::color.scale_color_wso() +
+    theme_cs +
+    theme(
+      panel.spacing = unit(2, "lines"),
+      strip.background = element_blank(),
+      strip.text.x = element_blank(),
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 45, hjust = 1)
     )
 ```
 
