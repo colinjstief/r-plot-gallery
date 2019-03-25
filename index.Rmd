@@ -417,7 +417,7 @@ miris %>%
 selectGroup <- miris %>%
   filter(
     Species == "virginica",
-    Sepal.Width > 3750  
+    Sepal.Width > 375  
   )
 
 selectPoint <- miris %>%
