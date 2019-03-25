@@ -566,6 +566,7 @@ ChickWeight %>%
     geom_point(
       aes(x = Time, y = weight, color = Diet)
     ) +
+    wso::color.scale_color_wso() +
     labs(
       title = "Weight of Chicks by Diet Type",
       x = "Days from birth",
@@ -584,6 +585,7 @@ ChickWeight %>%
       se = FALSE, method = lm
     ) +
     geom_point() +
+    wso::color.scale_color_wso() +
     labs(
       title = "Weight of Chicks by Diet Type",
       x = "Days from birth",
@@ -620,6 +622,7 @@ ChickWeight %>%
     geom_boxplot(
       outlier.shape = NA, alpha = 0
     ) +
+    wso::color.scale_color_wso() +
     labs(
       title = "Chick Weight By Diet",
       x = "Diet",
@@ -1054,6 +1057,7 @@ ChickWeight %>%
     geom_point(
       aes(x = Time, y = weight, color = Diet)
     ) +
+    wso::color.scale_color_wso() +
     labs(
       title = "Weight of Chicks by Diet Type",
       x = "Days from birth",
@@ -1073,6 +1077,7 @@ ChickWeight %>%
     geom_point(
       aes(x = Time, y = weight, color = Diet)
     ) +
+    wso::color.scale_color_wso() +
     labs(
       title = "Weight of Chicks by Diet Type",
       x = "Days from birth",
@@ -1092,6 +1097,7 @@ ChickWeight %>%
     geom_point(
       aes(x = Time, y = weight, color = Diet)
     ) +
+    wso::color.scale_color_wso() +
     annotate(
       "text", x = 0, y = 105, color = "red", fontface = "bold", 
       hjust = 0, vjust = 0,
@@ -1116,6 +1122,7 @@ ChickWeight %>%
     geom_point(
       aes(x = Time, y = weight, color = Diet)
     ) +
+    wso::color.scale_color_wso() +
     labs(
       title = "Weight of Chicks by Diet Type",
       x = "Days from birth",
