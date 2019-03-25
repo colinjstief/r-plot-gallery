@@ -1,0 +1,1249 @@
+---
+title: "Plot Gallery"
+output:
+  html_document:
+    code_folding: hide
+    df_print: paged
+    toc: yes
+    toc_collapsed: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+<style type = "text/css">h1.title { font-size: 32px;} h1 { font-size: 24px;} h2 { font-size: 20px; } h3 { font-size: 16px; }</style>
+
+```{r include = FALSE}
+## Setting global chunk options
+knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Workspace and Other Setup {.tabset .tabset-fade}
+## Packages & settings
+```{r results = "hide"}
+library(wso)
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(ggrepel)
+wso::util.settings()
+```
+
+## Directories and Files
+```{r}
+if (.Platform$OS.type == "windows") {
+  baseDir <- "C:\\Desktop\\GitHub\\code-book"
+} else {
+  baseDir <- "~/Desktop/GitHub/code-book/r"
+}
+
+dataDir <- file.path(baseDir, "_data")
+```
+
+## Modify data
+To make our data more convenient to work with
+```{r}
+miris <- iris %>%
+  mutate_if(
+    is.numeric, ~ . * 1000
+  ) %>%
+  mutate(
+    wsoIndex = 1:nrow(iris)
+  )
+
+fuelEconomy <- mpg %>%
+  group_by(year, cyl) %>%
+  summarize(
+    avgHwy = mean(hwy)
+  )
+
+monthlyStorms <- storms %>% 
+  mutate(
+    year = make_date(year)
+  ) %>%
+  group_by(year, name) %>% 
+  summarise(
+    meanPressure = mean(pressure),
+    meanWind = mean(wind)
+  ) %>%
+  group_by(year) %>% 
+  summarise(
+    count = dplyr::n(),
+    meanPressure = mean(meanPressure),
+    meanWind = mean(meanWind)
+  ) %>% 
+  mutate(
+    studyPeriod = if_else(
+      year >= make_date(2000) & year <= make_date(2010),
+      TRUE, FALSE
+    )
+  ) %>%
+  filter(
+    year >= make_date(1998) & year <= make_date(2012)
+  )
+
+huron <- tibble(
+  year = make_date(1875:1972),
+  level = as.vector(LakeHuron)
+)
+```
+
+## Themes and colors
+```{r}
+theme_cs <- theme_minimal() +
+  theme(
+    
+    ## Title
+    plot.title = element_text(
+      size = 14, face = "bold", hjust = 0.5,
+      margin = margin(t = 10, r = 0, b = 10, l = 0)
+    ),
+    
+    ## Axis
+    axis.text = element_text(size = 10),
+    axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 10, l = 0)),
+    axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)),
+    
+    ## Legend
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(size = 10)
+    
+  )
+```
+
+# Bar
+## Category on x axis
+```{r}
+mpg %>%
+  group_by(class) %>%
+  summarise(
+    avgHwy = mean(hwy)
+  ) %>%
+  ggplot() +
+    geom_col(
+      aes(x = class, y = avgHwy), fill = wso::color.wsoCols("dark blue")
+    ) +
+    labs(
+      title = "Fuel Economy by Class",
+      x = "Class",
+      y = "MPG"
+    ) +
+    theme_cs
+```
+
+## Reordering
+```{r}
+mpg %>%
+  group_by(class) %>%
+  summarise(
+    avgHwy = mean(hwy)
+  ) %>%
+  ggplot() +
+    geom_col(
+      aes(
+        x = forcats::fct_reorder(class, avgHwy),
+        y = avgHwy
+      ), fill = wso::color.wsoCols("dark blue")
+    ) +
+    labs(
+      title = "Fuel Economy by Class",
+      x = "Class",
+      y = "MPG"
+    ) +
+    theme_cs + 
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+```
+
+Switch the order, add some labels, and make sure our y axis tops out over our maximum value.
+```{r}
+cars <- mpg %>%
+  group_by(class) %>%
+  summarise(
+    avgHwy = mean(hwy)
+  ) 
+
+cars %>%
+  ggplot() +
+    geom_col(
+      aes(
+        x = forcats::fct_reorder(class, avgHwy, .desc = TRUE),
+        y = avgHwy
+      ), fill = wso::color.wsoCols("dark blue")
+    ) +
+    scale_y_continuous( 
+      limits = c(0, plyr::round_any(max(cars$avgHwy), 10, ceiling))
+    ) +
+    geom_text(
+      aes(
+        x = forcats::fct_reorder(class, avgHwy, .desc = TRUE), 
+        y = avgHwy - 2,
+        label = scales::comma_format(.01)(avgHwy)
+      ),
+      size = 3, colour = "#FEFFFE", fontface = "bold"
+    ) +
+    labs(
+      title = "Fuel Economy by Class",
+      x = "Class",
+      y = "MPG"
+    ) +
+    theme_cs + 
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+```
+
+## Date on x axis
+```{r}
+monthlyStorms %>%
+  ggplot() +
+    geom_col(
+      aes(x = year, y = count), fill = wso::color.wsoCols("dark blue")
+    ) +
+    scale_x_date(
+      labels = scales::date_format("%Y"),
+      date_breaks = "3 years"
+    ) +
+    labs(
+      title = "Storms in US Per Year",
+      x = "Year",
+      y = "Count of storms"
+    ) +
+    theme_cs
+```
+
+## Fill by Group
+```{r}
+monthlyStorms %>%
+  ggplot() +
+    geom_col(
+      aes(x = year, y = count, fill = studyPeriod)
+    ) +
+    scale_fill_manual(
+      name = "Event",
+      breaks = c("TRUE", "FALSE"),
+      labels = c("In Study Period", "Out of Study Period"),
+      values = c(
+        "TRUE" = unname(wso::color.wsoCols("dark blue")),
+        "FALSE" = unname(wso::color.wsoCols("light grey"))
+      )
+    ) +
+    labs(
+      title = "Storms in US Per Year",
+      x = "Year",
+      y = "Count of storms"
+    ) +
+    theme_cs
+```
+
+## Stacked
+```{r}
+storms %>%
+  ggplot() +
+    geom_bar(
+      aes(x = make_date(year), fill = status)
+    ) +
+    wso::color.scale_fill_wso(
+      name = "",
+      labels = stringr::str_to_title
+    ) +
+    labs(
+      title = "Storms in US Per Year",
+      x = "Year",
+      y = "Count of storms"
+    ) +
+    theme_cs +
+    theme(
+      legend.position = "bottom"
+    )
+```
+
+## Stacked (Proportions)
+```{r}
+storms %>%
+  ggplot() +
+    geom_bar(
+      aes(x = make_date(year), fill = status),
+      position = "fill"
+    ) +
+    scale_y_continuous(
+      labels = scales::percent_format(1)
+    ) +
+    wso::color.scale_fill_wso(
+      name = "",
+      labels = stringr::str_to_title
+    ) +
+    labs(
+      title = "Type of storms in US Per Year",
+      x = "Year",
+      y = "Percent"
+    ) +
+    theme_cs +
+    theme(
+      legend.position = "bottom"
+    )
+```
+
+## Side by side
+```{r}
+fuelEconomy %>%
+  ggplot(
+    ## Include in here so it is given to all layers
+    ## Make cyl a factor so we can use with bar chart
+    aes(x = as.factor(year), y = avgHwy, fill = as.factor(cyl)) 
+  ) +
+    geom_bar(
+      # Put the bars of different groups next to each other instead of stacked
+      position = "dodge", stat = "identity"
+    ) +
+    # Gives us a little breathing room up to so our labels aren't cut off
+    geom_blank( 
+      aes(y = avgHwy * 1.1)
+    ) +
+    labs(
+      title = "Fuel Economy Over the Years",
+      y = "Fuel Economy (mpg)",
+      x = "Year"
+    ) +
+    wso::color.scale_fill_wso(
+      name = "Drive Type"
+    ) +
+    theme_cs
+```
+
+Now adjust the column names and add labels to make sure our legend colors and plots fill colors match.
+```{r}
+fuelEconomy %>%
+  ggplot(
+    aes(x = as.factor(year), y = avgHwy, fill = as.factor(cyl))
+  ) +
+    geom_bar(
+      position = "dodge", stat = "identity"
+    ) +
+    geom_text(
+      # Specify data for annotations
+      aes(label = factor(cyl)), 
+      # Space the labels so they aren't stacked
+      position = position_dodge(width = 0.9), 
+      # Bump the annotation up
+      vjust = -1
+    ) +
+    # Gives us a little breathing room up to so our labels aren't cut off
+    geom_blank( 
+      aes(y = avgHwy * 1.1)
+    ) +
+    labs(
+      title = "Fuel Economy Over the Years",
+      y = "Fuel Economy (mpg)",
+      x = "Year"
+    ) +
+    wso::color.scale_fill_wso(
+      name = "Drive Type",
+      palette = "dark blue to green",
+      interpolate = TRUE,
+      labels = c("Four", "Five", "Six", "Eight")
+      #labels = c("Eight", "Six", "Five", "Four") ## Watch out this is out of order and you wouldn't know it
+    ) +
+    theme_cs
+```
+
+## Sideways
+```{r}
+mysleep <- msleep %>%
+  arrange(desc(sleep_total)) %>%
+  slice(50:70) %>%
+  mutate(
+    wellRested = if_else(
+      sleep_total >= 8, "> 8 Hours", "< 8 Hours"
+    )
+  )
+
+mysleep %>%
+  ggplot() +
+    geom_col(
+      aes(
+        x = forcats::fct_reorder(name, sleep_total), 
+        y = sleep_total, 
+        fill = wellRested
+      )
+    ) +
+    coord_flip() +
+    labs(
+      title = "How well rested are these animals?",
+      y = "Hours of sleep",
+      x = "Animal"
+    ) +
+    scale_y_continuous(
+      breaks = seq(0, max(mysleep$sleep_total), 2)
+    ) +
+    scale_fill_manual(
+      name = "Hours of \nsleep per day",
+      breaks = c( "> 8 Hours", "< 8 Hours"),
+      values = c(
+        "> 8 Hours" = unname(wso::color.wsoCols("dark blue")), 
+        "< 8 Hours" = unname(wso::color.wsoCols("burnt orange"))
+      )
+    ) +
+    theme_cs
+```
+
+# Point / Scatter
+## Basic
+```{r}
+miris %>%
+  ggplot() +
+    geom_point(
+      aes(x = Sepal.Width, y = Petal.Width, color = Species),
+      size = 3
+    ) +
+    scale_x_continuous(
+      labels = scales::comma_format()
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    labs(
+      title = "Sepal Width by Petal Length",
+      x = "Sepal.Width (small units)",
+      y = "Petal.Length (small units)"
+    ) +
+    wso::color.scale_color_wso() +
+    theme_cs
+```
+
+## Annotate specific data points
+```{r}
+selectGroup <- miris %>%
+  filter(
+    Species == "virginica",
+    Sepal.Width > 3750  
+  )
+
+selectPoint <- miris %>%
+  filter(
+    Petal.Width + Sepal.Width == min(Petal.Width + Sepal.Width)
+  )
+
+miris %>%
+  ggplot(
+    aes(x = Petal.Length, y = Sepal.Width)
+  ) +
+    geom_point(
+      aes(color = Species), size = 3
+    ) +
+    geom_point(data = selectGroup, size = 3, shape = 1) +
+    geom_point(data = selectPoint, size = 3, shape = 1) +
+    geom_text_repel(data = selectGroup, mapping = aes(label = wsoIndex), point.padding = 1) +
+    geom_label_repel(data = selectPoint, mapping = aes(label = wsoIndex), point.padding = 1) +
+    scale_x_continuous(
+      labels = scales::comma_format()
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    labs(
+      title = "Sepal Width by Petal Length",
+      x = "Petal.Length (small units)",
+      y = "Sepal.Width (small units)"
+    ) +
+    wso::color.scale_color_wso() +
+    theme_cs
+```
+
+## Legend label adjustments
+```{r}
+storms %>%
+  ggplot() +
+    geom_point(
+      aes(x = wind, y = pressure, color = factor(status))
+    ) +
+    labs(
+      title = "Pressure vs Wind Speed of Storms",
+      y = "Pressure (mbar)",
+      x = "Wind Speed (mph)"
+    ) +
+    wso::color.scale_color_wso(
+      name = "Storm Type",
+      labels = stringr::str_to_title
+    ) +
+    theme_cs
+```
+
+## Jitter
+```{r}
+mpg %>%
+  ggplot() + 
+  geom_jitter(
+    aes(x = cty, y = hwy, color = class),
+    width = 0.5, height = 0.5
+  ) +
+  wso::color.scale_color_wso(
+    name = "Class",
+    labels = stringr::str_to_title
+  ) +
+  labs(
+    title = "Fuel Economy",
+    y = "Highway MPG",
+    x = "City MPG"
+  ) +
+  theme_cs
+```
+
+Lump together classes that appear less than 15% of the time
+
+```{r}
+mpg %>%
+  ggplot() + 
+  geom_jitter(
+    aes(
+      x = cty, 
+      y = hwy, 
+      color = forcats::fct_lump(class, prop = 0.15)
+    ),
+    width = 2, height = 2
+  ) +
+  wso::color.scale_color_wso(
+    name = "Class",
+    labels = stringr::str_to_title
+  ) +
+  labs(
+    title = "Fuel Economy",
+    y = "Highway MPG",
+    x = "City MPG"
+  ) +
+  theme_cs
+```
+
+## Count
+```{r}
+mpg %>%
+  ggplot() + 
+  geom_count(
+    aes(x = cty, y = hwy), color = wso::color.wsoCols("dark blue")
+  ) +
+  labs(
+    title = "Fuel Economy",
+    y = "Highway MPG",
+    x = "City MPG"
+  ) +
+  theme_cs
+```
+
+## Rug
+```{r}
+mtcars %>%
+  ggplot(
+      aes(x = wt, y = mpg)
+    ) +
+    geom_point(
+      color = wso::color.wsoCols("blue")
+    ) +
+    geom_rug() +
+    coord_cartesian(
+      ylim = c(0,  plyr::round_any(max(mtcars$mpg), 10, f = ceiling))
+    ) +
+    labs(
+      title = "Fuel Economy by Weight",
+      y = "Highway MPG",
+      x = "Weight (tons)"
+    ) +
+    theme_cs
+```
+
+# Regression
+Manual
+```{r}
+model <- lm(weight ~ Time, data = ChickWeight)
+int <- coef(model)["(Intercept)"] %>% unname()
+slope <- coef(model)["Time"] %>% unname()
+
+ChickWeight %>%
+  ggplot() +
+    geom_abline(
+      intercept = int, slope = slope, color = wso::color.wsoCols("dark blue"),
+    ) +
+    geom_point(
+      aes(x = Time, y = weight, color = Diet)
+    ) +
+    labs(
+      title = "Weight of Chicks by Diet Type",
+      x = "Days from birth",
+      y = "Weight (grams)"
+    ) +
+    theme_cs
+```
+
+Geom Smooth
+```{r}
+ChickWeight %>%
+  ggplot(
+      aes(x = Time, y = weight, color = Diet)
+    ) +
+    geom_smooth(
+      se = FALSE, method = lm
+    ) +
+    geom_point() +
+    labs(
+      title = "Weight of Chicks by Diet Type",
+      x = "Days from birth",
+      y = "Weight (grams)"
+    ) +
+    theme_cs
+```
+
+# Box plot
+```{r}
+ChickWeight %>%
+  ggplot() +
+    geom_boxplot(
+      aes(x = Diet, y = weight),
+      outlier.colour = "red", outlier.shape = 1
+    ) +
+    labs(
+      title = "Chick Weight By Diet",
+      x = "Diet",
+      y = "Weight (grams)"
+    ) +
+    theme_cs
+```
+
+With the original data
+```{r}
+ChickWeight %>%
+  ggplot(
+      aes(x = Diet, y = weight)
+    ) +
+    geom_jitter(
+      aes(color = Diet)
+    ) +
+    geom_boxplot(
+      outlier.shape = NA, alpha = 0
+    ) +
+    labs(
+      title = "Chick Weight By Diet",
+      x = "Diet",
+      y = "Weight (grams)"
+    ) +
+    theme_cs
+```
+
+# Histogram
+```{r}
+diamonds %>%
+  ggplot() +
+    geom_histogram(
+      aes(x = price), fill = wso::color.wsoCols("dark blue")
+      bins = 35
+      # binwidth = 0.05 ## Could use this too
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    scale_x_continuous(
+      labels = scales::dollar_format()
+    ) +
+    labs(
+      title = "Diamonds",
+      x = "Price",
+      y = "Count"
+    ) +
+    theme_cs
+```
+
+```{r}
+diamonds %>%
+  ggplot() +
+    geom_histogram(
+      aes(x = price, fill = cut),
+      bins = 35
+      # binwidth = 0.05 ## Could use this too
+    ) +
+    wso::color.scale_fill_wso(
+      name = "Price"
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    scale_x_continuous(
+      labels = scales::dollar_format()
+    ) +
+    labs(
+      title = "Diamonds",
+      x = "Price",
+      y = "Count"
+    ) +
+    theme_cs
+```
+
+# Frequency
+```{r}
+diamonds %>%
+  ggplot() +
+    geom_freqpoly(
+      aes(x = price, color = cut),
+      bins = 35
+      # binwidth = 0.05 ## Could use this too
+    ) +
+    wso::color.scale_color_wso(
+      name = "Price"
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    scale_x_continuous(
+      labels = scales::dollar_format()
+    ) +
+    labs(
+      title = "Diamonds",
+      x = "Price",
+      y = "Count"
+    ) +
+    theme_cs
+```
+
+```{r}
+diamonds %>%
+  ggplot() +
+    geom_freqpoly(
+      aes(x = price, color = cut, stat(density)),
+      bins = 35
+      # binwidth = 0.05 ## Could use this too
+    ) +
+    wso::color.scale_color_wso(
+      name = "Price"
+    ) +
+    scale_y_continuous(
+      labels = scales::percent_format(.01)
+    ) +
+    scale_x_continuous(
+      labels = scales::dollar_format()
+    ) +
+    labs(
+      title = "Diamonds",
+      x = "Price",
+      y = "Percent"
+    ) +
+    theme_cs
+```
+
+# Density
+```{r}
+diamonds %>%
+  ggplot() +
+    geom_density(
+      aes(x = depth, color = cut, fill = cut),
+      alpha = 0.1
+    ) +
+    coord_cartesian(
+      xlim = c(55, 70)
+    ) +
+    wso::color.scale_color_wso(
+      name = "Cut"
+    ) +
+    wso::color.scale_fill_wso(
+      name = "Cut"
+    ) +
+    scale_y_continuous(
+      labels = scales::percent_format(.01)
+    ) +
+    labs(
+      title = "Diamonds",
+      x = "Depth",
+      y = "Percent"
+    ) +
+    theme_cs +
+    theme(
+      legend.position = "bottom"
+    )
+```
+
+# Error Bars
+```{r}
+
+```
+
+# Path
+```{r}
+economics <- economics %>%
+  mutate(
+    unemployRate = unemploy/pop
+  )
+
+economics %>%
+  ggplot() +
+    geom_path(
+      mapping = aes(unemployRate, y = psavert, color = as.numeric(date)),
+      lineend = "butt", linejoin = "round", linemitre = 1
+    ) +
+    wso::color.scale_color_wso(
+      discrete = FALSE,
+      palette = "dark blue to green",
+      name = "Year",
+      labels = function(label) {
+        labelDate <- as.Date(label, origin = "1970-01-01")
+        year(labelDate)
+      }
+    ) +
+    labs(
+      title = "Unemployment vs Personal Savings Over Time",
+      x = "Unemployment Rate",
+      y = "Personal Savings"
+    ) +
+    theme_cs
+```
+
+# Polygon
+```{r}
+ids <- factor(c("A", "B", "C", "D", "E", "F"))
+
+values <- tibble(
+  id = ids,
+  value = c(3, 3.1, 3.1, 3.2, 3.15, 3.5)
+)
+
+positions <- tibble(
+  id = rep(ids, each = 4),
+  x = c(2, 1, 1.1, 2.2, 1, 0, 0.3, 1.1, 2.2, 1.1, 1.2, 2.5, 1.1, 0.3,
+  0.5, 1.2, 2.5, 1.2, 1.3, 2.7, 1.2, 0.5, 0.6, 1.3),
+  y = c(-0.5, 0, 1, 0.5, 0, 0.5, 1.5, 1, 0.5, 1, 2.1, 1.7, 1, 1.5,
+  2.2, 2.1, 1.7, 2.1, 3.2, 2.8, 2.1, 2.2, 3.3, 3.2)
+)
+
+datapoly <- left_join(values, positions, by = "id")
+
+datapoly %>%
+  ggplot() +
+    geom_polygon(
+      aes( x = x, y = y, fill = value, group = id)
+    ) + 
+    wso::color.scale_fill_wso(
+      discrete = FALSE,
+      palette = "blue green red",
+      name = "Score"
+    ) +
+    labs(
+      title = "No Clue What This Is",
+      x = "A crazy variable",
+      y = "Something wild"
+    ) +
+    theme_cs
+```
+
+# Rectangle (Background Color)
+## Horizontal (Data outside ggplot)
+Note that here we are defining our data outside of our main geom so that we can properly apply an alpha.
+Details here :https://stackoverflow.com/questions/17521438/geom-rect-and-alpha-does-this-work-with-hard-coded-values
+
+Also note that with dates in the x-axis, we need to keep `xmin` and `xmax` out of `aes()` because it would try to coerce `Inf` as a date, which will not work. Alternatively, we could have specified `min(monthlyStorms$date)` and `max(monthlyStorms$date)` in our dataframe and kept `xmin` and `xmax` in our `aes()`, but then the colored background doesn't extend to the edge of the plot, it only goes to the middle of the first and last bar, which isn't the greatest looking thing in the world.
+```{r}
+ggplot() +
+  geom_rect(
+    aes(ymin = -Inf, ymax = 8000), 
+    xmin = -Inf, xmax = Inf, 
+    alpha = 0.25, fill = wso::color.wsoCols("green")
+  ) +
+  geom_line(
+    data = economics,
+    aes(x = date, y = unemploy),
+    color = wso::color.wsoCols("dark blue"), size = 0.75
+  ) +
+  scale_y_continuous(
+    label = scales::comma_format(1)
+  ) +
+  labs(
+    title = "US Unemployment",
+    x = "Date",
+    y = "People Out of Work"
+  ) +
+  theme_cs
+```
+
+## Horizontal (Data insde ggplot)
+To avoid having to specify your data in every layer, one work around is to provide a single row from the data set in your rectangle. This will prevent the rectangle from appearing once for each time in your dataset (which prevents you from being able to use alpha).
+```{r}
+economics %>%
+  ggplot() +
+    geom_rect(
+      data = economics[1,],
+      aes(xmin = min(economics$date), xmax = max(economics$date), ymin = 8000, ymax = Inf), 
+      alpha = 0.25, fill = wso::color.wsoCols("red")
+    ) +
+    geom_line(
+      aes(x = date, y = unemploy),
+      color = wso::color.wsoCols("dark blue"), size = 0.75
+    ) +
+    scale_y_continuous(
+      label = scales::comma_format(1)
+    ) +
+    labs(
+      title = "US Unemployment",
+      x = "Date",
+      y = "People Out of Work"
+    ) +
+    theme_cs
+```
+
+## Horizontal (with data frame)
+```{r}
+## No x min or max here because we want to use Inf, and can't make that jive with our date axis
+## We'll specify them outside of aes in our geom_rect
+backgrounds <- tibble(
+  minY = c(0, 15),
+  maxY = c(15, Inf),
+  fillColor = c("Average", "Abnormal")
+)
+
+monthlyStorms %>%
+  ggplot() +
+    geom_rect(
+      data = backgrounds, 
+      aes(ymin = minY, ymax = maxY, fill = fillColor), 
+      xmin = -Inf, xmax = Inf,
+      alpha = .2
+    ) +
+    geom_col(
+      aes(x = year, y = count), fill = unname(wso::color.wsoCols("dark blue"))
+    ) +
+    scale_fill_manual(
+      name = "Frequency",
+      aesthetics = c("fill"),
+      values = c(
+        "Average" = unname(wso::color.wsoCols("green")),
+        "Abnormal" = unname(wso::color.wsoCols("red"))
+      )
+    ) +
+    labs(
+      title = "Storms in US Per Year",
+      x = "Year",
+      y = "Count of storms"
+    ) +
+    theme_cs
+```
+
+## Vertical (by value)
+Here we use `dplyr::lead(date)` to dynamically set our `xmax`... basically this grabs the next value in line.
+```{r}
+economicsAdj <- economics %>%
+  mutate(
+    status = if_else(
+      unemploy > 8000,
+      "Recession", "Boon"
+    )
+  ) 
+
+economicsAdj %>%
+  ggplot() +
+    geom_rect(
+      aes(
+        xmin = date, xmax = dplyr::lead(date),
+        ymin = -Inf, ymax = Inf,
+        fill = status
+      ),
+      alpha = 0.4
+    ) +
+    geom_line(
+      aes(x = date, y = unemploy),
+      color = wso::color.wsoCols("dark blue"), size = 0.75
+    ) +
+    scale_y_continuous(
+      label = scales::comma_format(1)
+    ) +
+    labs(
+      title = "US Unemployment",
+      x = "Date",
+      y = "People Out of Work"
+    ) +
+    theme_cs
+```
+
+# Ribbon
+```{r}
+huron %>%
+  ggplot() +
+    geom_ribbon(
+      aes(x = year, ymin = level - 1, ymax = level + 1), 
+      fill = wso::color.wsoCols("blue"), alpha = 0.4
+    ) + 
+    geom_line(
+      aes(x = year, y = level), 
+      color = wso::color.wsoCols("dark blue"), size = 1
+    ) +
+    labs(
+      title = "Level of Lake Huron",
+      x = "Date",
+      y = "Level (ft)"
+    ) +
+    theme_cs
+```
+
+# Lines
+## Vertical
+```{r}
+ChickWeight %>%
+  ggplot() +
+    geom_vline(
+      xintercept = 15, color = wso::color.wsoCols("dark blue")
+    ) +
+    geom_point(
+      aes(x = Time, y = weight, color = Diet)
+    ) +
+    labs(
+      title = "Weight of Chicks by Diet Type",
+      x = "Days from birth",
+      y = "Weight (grams)"
+    ) +
+    theme_cs
+```
+
+## Vertical (repeated)
+```{r}
+ChickWeight %>%
+  ggplot() +
+    geom_vline(
+      xintercept = seq(1, 20, 5), color = wso::color.wsoCols("dark blue"), 
+      linetype = "longdash", size = 0.75
+    ) +
+    geom_point(
+      aes(x = Time, y = weight, color = Diet)
+    ) +
+    labs(
+      title = "Weight of Chicks by Diet Type",
+      x = "Days from birth",
+      y = "Weight (grams)"
+    ) +
+    theme_cs
+```
+
+## Horizontal
+For annotation, hjust stands for horizontal justification, 0 will be left-justified, 0.5 will be centered, and 1 will be right-justified. For vjust, 0 will be top-justified, 0.5 will be centered, and 1 will be bottom-justified.
+```{r}
+ChickWeight %>%
+  ggplot() +
+    geom_hline(
+      yintercept = 100, color = wso::color.wsoCols("red")
+    ) +
+    geom_point(
+      aes(x = Time, y = weight, color = Diet)
+    ) +
+    annotate(
+      "text", x = 0, y = 105, color = "red", fontface = "bold", 
+      hjust = 0, vjust = 0,
+      label = "Healthy min. at 15 days"
+    ) +
+    labs(
+      title = "Weight of Chicks by Diet Type",
+      x = "Days from birth",
+      y = "Weight (grams)"
+    ) +
+    theme_cs
+```
+
+## Sloped
+Manually set
+```{r}
+ChickWeight %>%
+  ggplot() +
+    geom_abline(
+      intercept = 40, slope = 4, color = wso::color.wsoCols("dark blue"),
+    ) +
+    geom_point(
+      aes(x = Time, y = weight, color = Diet)
+    ) +
+    labs(
+      title = "Weight of Chicks by Diet Type",
+      x = "Days from birth",
+      y = "Weight (grams)"
+    ) +
+    theme_cs
+```
+
+# Area
+```{r}
+huron %>%
+  ggplot() +
+    geom_area(
+      aes(x = year, y = level ), 
+      fill = wso::color.wsoCols("blue")
+    ) + 
+    labs(
+      title = "Level of Lake Huron",
+      x = "Date",
+      y = "Level (ft)"
+    ) +
+    theme_cs
+```
+
+We can also adjust the canvas to zoom in on the changes
+```{r}
+huron %>%
+  ggplot() +
+    geom_area(
+      aes(x = year, y = level ), 
+      fill = wso::color.wsoCols("blue")
+    ) + 
+    labs(
+      title = "Level of Lake Huron",
+      x = "Date",
+      y = "Level (ft)"
+    ) +
+    coord_cartesian(
+      ylim = c(560, 590)
+      # Could also set dynamically
+      #ylim = c(min(huron$level) - 10, max(huron$level + 10))
+    ) +
+    theme_cs
+```
+
+# Random adjustments
+Lots of information here: https://ggplot2.tidyverse.org/reference/theme.html
+
+## Legend inside plot
+```{r}
+storms %>%
+  ggplot() +
+    geom_point(
+      aes(x = wind, y = pressure, color = factor(status))
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    labs(
+      title = "Pressure vs Wind Speed of Storms",
+      y = "Pressure (mbar)",
+      x = "Wind Speed (mph)"
+    ) +
+    wso::color.scale_color_wso(
+      name = "Storm Type",
+      labels = stringr::str_to_title
+    ) +
+    theme_cs +
+    theme(
+      legend.position = c(.05, .05),
+      legend.justification = c("left", "bottom"),
+      legend.box.just = "right",
+      legend.margin = margin(6, 6, 6, 6),
+      legend.background = element_rect(fill = alpha("white", 0.6))
+    )
+```
+
+## Remove legend
+```{r}
+storms %>%
+  ggplot() +
+    geom_point(
+      aes(x = wind, y = pressure, color = factor(status)),
+      show.legend = FALSE
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    labs(
+      title = "Pressure vs Wind Speed of Storms",
+      y = "Pressure (mbar)",
+      x = "Wind Speed (mph)"
+    ) +
+    wso::color.scale_color_wso(
+      name = "Storm Type",
+      labels = stringr::str_to_title
+    ) +
+    theme_cs
+```
+
+## Remove Axis
+```{r}
+storms %>%
+  ggplot() +
+    geom_point(
+      aes(x = wind, y = pressure, color = factor(status))
+    ) +
+    labs(
+      title = "Pressure vs Wind Speed of Storms"
+    ) +
+    wso::color.scale_color_wso(
+      name = "Storm Type",
+      labels = stringr::str_to_title
+    ) +
+    theme_cs +
+    theme(
+      legend.position = "bottom",
+      axis.title = element_blank(),
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      # axis.title.x = element_blank(),
+      # axis.text.x = element_blank(),
+      # axis.ticks.x = element_blank(),
+      # axis.title.y = element_blank(),
+      # axis.text.y = element_blank(),
+      # axis.ticks.y = element_blank()
+    )
+```
+
+## Remove Grid
+```{r}
+storms %>%
+  ggplot() +
+    geom_point(
+      aes(x = wind, y = pressure, color = factor(status))
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    labs(
+      title = "Pressure vs Wind Speed of Storms",
+      y = "Pressure (mbar)",
+      x = "Wind Speed (mph)"
+    ) +
+    wso::color.scale_color_wso(
+      name = "Storm Type",
+      labels = stringr::str_to_title
+    ) +
+    theme_cs +
+    theme(
+      panel.grid.major = element_blank(), 
+      panel.grid.minor = element_blank()
+    )
+```
+
+## Remove Everything
+```{r}
+storms %>%
+  ggplot() +
+    geom_point(
+      aes(x = wind, y = pressure, color = factor(status)),
+      show.legend = FALSE
+    ) +
+    wso::color.scale_color_wso() +
+    theme_cs +
+    theme_void()
+```
+
+## Adjust Grid
+```{r}
+storms %>%
+  ggplot() +
+    geom_point(
+      aes(x = wind, y = pressure, color = factor(status))
+    ) +
+    labs(
+      title = "Pressure vs Wind Speed of Storms",
+      y = "Pressure (mbar)",
+      x = "Wind Speed (mph)"
+    ) +
+    wso::color.scale_color_wso(
+      name = "Storm Type",
+      labels = stringr::str_to_title
+    ) +
+    theme_cs +
+    theme(
+      panel.grid.minor = element_line(
+        colour = wso::color.wsoCols("dark blue"), 
+        size = 0.25
+      )
+      # panel.grid.major = element_line(
+      #   colour = wso::color.wsoCols("dark blue"), 
+      #   size = 0.25
+      # )
+    )
+```
+
