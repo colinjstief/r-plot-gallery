@@ -20,6 +20,7 @@ knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE)
 
 # Workspace and Other Setup {.tabset .tabset-fade}
 ## Packages & settings
+Load what I need.
 ```{r results = "hide"}
 library(wso)
 library(tidyverse)
@@ -27,17 +28,6 @@ library(lubridate)
 library(scales)
 library(ggrepel)
 wso::util.settings()
-```
-
-## Directories and Files
-```{r}
-if (.Platform$OS.type == "windows") {
-  baseDir <- "C:\\Desktop\\GitHub\\code-book"
-} else {
-  baseDir <- "~/Desktop/GitHub/code-book/r"
-}
-
-dataDir <- file.path(baseDir, "_data")
 ```
 
 ## Modify data
@@ -89,6 +79,7 @@ huron <- tibble(
 ```
 
 ## Themes and colors
+Make my own theme!
 ```{r}
 theme_cs <- theme_minimal() +
   theme(
@@ -549,6 +540,71 @@ mtcars %>%
       x = "Weight (tons)"
     ) +
     theme_cs
+```
+
+# Facets
+With a bar chart
+```{r}
+
+```
+
+With a scatterplot
+```{r}
+miris %>%
+  ggplot() +
+    geom_point(
+      aes(x = Sepal.Width, y = Petal.Width, color = Species),
+      size = 2
+    ) +
+    facet_grid(
+      cols = vars(Species)
+    ) +
+    scale_x_continuous(
+      labels = scales::comma_format()
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    labs(
+      title = "Sepal Width by Petal Length",
+      x = "Sepal.Width (small units)",
+      y = "Petal.Length (small units)"
+    ) +
+    wso::color.scale_color_wso() +
+    theme_cs +
+    theme(
+      panel.spacing = unit(2, "lines"),
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+```
+
+```{r}
+miris %>%
+  ggplot() +
+    geom_point(
+      aes(x = Sepal.Width, y = Petal.Width, color = Species),
+      size = 2
+    ) +
+    facet_grid(
+      rows = vars(Species), scales = "free"
+    ) +
+    scale_x_continuous(
+      labels = scales::comma_format()
+    ) +
+    scale_y_continuous(
+      labels = scales::comma_format()
+    ) +
+    labs(
+      title = "Sepal Width by Petal Length",
+      x = "Sepal.Width (small units)",
+      y = "Petal.Length (small units)"
+    ) +
+    wso::color.scale_color_wso() +
+    theme_cs +
+    theme(
+      legend.position = "bottom"
+    )
 ```
 
 # Regression
